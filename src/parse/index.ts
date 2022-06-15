@@ -1,10 +1,10 @@
 import findConfig from 'find-config'
 import ts from 'typescript'
-import { Parser, ComponentDoc } from 'react-docgen-typescript';
+import { Parser } from 'react-docgen-typescript';
 import _ from 'lodash';
 import fs from 'fs-extra'
-import { transformItem } from './transform.js'
-import { Prop } from '../schema/type.js'
+import { transformItem } from './transform'
+import { Prop } from '../schema/type'
 
 const blacklistNames = [
     'prototype',
@@ -18,7 +18,7 @@ const blacklistNames = [
     'Consumer',
 ];
 
-export default function(filePath: string, args: {workDir: string; tsconfigFileName?: string }): { props: Prop }[] {
+export default function(filePath: string, args: {workDir: string; tsconfigFileName?: string }): { props: Prop[] }[] {
     if (!filePath) {
         return []
     }

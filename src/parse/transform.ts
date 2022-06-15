@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { safeEval, isEvaluable } from '../utils/index.js';
+import { safeEval, isEvaluable } from '../utils/index';
 
 export function transformType(itemType: any) {
   if (typeof itemType === 'string') return itemType;
@@ -199,7 +199,7 @@ function combineOneOfValues(propType: any) {
   if (propType.type !== 'oneOfType') {
     return propType;
   }
-  const newValue = [];
+  const newValue: any[] = [];
   let oneOfItem: any = null;
   let firstBooleanIndex = -1;
   propType.value.forEach((item: any) => {

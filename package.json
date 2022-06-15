@@ -1,12 +1,11 @@
 {
     "name": "vitis-material-parser",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "keywords": [
         "low-code"
     ],
     "description": "自动扫描、解析源码组件，最终产出一份符合 vitis 低代码系统的组件描述协议",
-    "module": "dist/index.js",
-    "type": "module",
+    "main": "dist/index.js",
     "engines": {
         "node": ">=14"
     },
@@ -28,8 +27,8 @@
     "devDependencies": {
         "@types/find-config": "^1.0.1",
         "@types/fs-extra": "^8.0.1",
-        "@types/node": "^14.6.0",
         "@types/lodash": "^4.14.149",
+        "@types/node": "^14.6.0",
         "@types/react": "^17.0.2"
     },
     "author": {
