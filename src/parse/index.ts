@@ -67,7 +67,7 @@ export default function(filePath: string, args: {workDir: string; tsconfigFileNa
         const sym: ts.Symbol = exportSymbols[index];
 
         const name = sym.getName();
-        // 排查命名导出
+        // 排除命名导出
         if (blacklistNames.includes(name) || name !== "default") {
           continue;
         }
