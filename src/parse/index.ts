@@ -3,72 +3,47 @@ import ts from 'typescript'
 import { Parser } from 'react-docgen-typescript';
 import _ from 'lodash';
 import fs from 'fs-extra'
-import { transformItem } from './transform'
+import { transformProp } from './transform'
 import { Prop } from '../schema/type'
 
-const blacklistNames = [
-    'prototype',
-    'getDerivedStateFromProps',
-    'propTypes',
-    'defaultProps',
-    'contextTypes',
-    'displayName',
-    'contextType',
-    'Provider',
-    'Consumer',
-];
+function createProgram(filePath: string, args: {workDir: string; tsconfigFileName?: string }) {
+  const tsconfigFileName = args.tsconfigFileName || 'tsconfig.json'
+  const tsConfigPath = findConfig(tsconfigFileName, { cwd: args.workDir })
 
-export default function(filePath: string, args: {workDir: string; tsconfigFileName?: string }): { props: Prop[] }[] {
-    if (!filePath) {
-        return []
+  if (!tsConfigPath) {
+      throw new Error(`在 ${args.workDir} 没有找的 tsconfig.json`);
+  }
+
+  const { config, error } = ts.readConfigFile(tsConfigPath, (filename) => {
+      return fs.readFileSync(filename, 'utf8')
+  });
+
+  if (error !== undefined) {
+      throw new Error(`在 ${args.workDir} 不能加载 tsconfig.json，错误码 ${error.code}, 错误信息 ${error.messageText}`);
+  }
+
+  const { options, errors } = ts.parseJsonConfigFileContent(config, ts.sys, args.workDir, {}, tsConfigPath)
+
+  if (errors.length) {
+      throw errors[0];
+  }
+  return ts.createProgram([filePath], options);
+}
+
+function getExportDefaultSymbol(checker: ts.TypeChecker, node: ts.Node) {
+  const symbol = checker.getSymbolAtLocation(node);
+
+    if (!symbol) {
+        return undefined
     }
-    const tsconfigFileName = args.tsconfigFileName || 'tsconfig.json'
-    const tsConfigPath = findConfig(tsconfigFileName, { cwd: args.workDir })
-
-    if (!tsConfigPath) {
-        throw new Error(`在 ${args.workDir} 没有找的 tsconfig.json`);
-    }
-
-    const { config, error } = ts.readConfigFile(tsConfigPath, (filename) => {
-        return fs.readFileSync(filename, 'utf8')
-    });
-
-    if (error !== undefined) {
-        throw new Error(`在 ${args.workDir} 不能加载 tsconfig.json，错误码 ${error.code}, 错误信息 ${error.messageText}`);
-    }
-
-    const { options, errors } = ts.parseJsonConfigFileContent(config, ts.sys, args.workDir, {}, tsConfigPath)
-
-    if (errors.length) {
-        throw errors[0];
-    }
-    const program = ts.createProgram([filePath], options);
-
-    const parser = new Parser(program, {})
-
-    const checker = program.getTypeChecker();
-    
-    const sourceFile = program.getSourceFile(filePath);
-
-    if (!sourceFile) {
-        return []
-    }
-
-    const moduleSymbol = checker.getSymbolAtLocation(sourceFile as ts.Node);
-
-    if (!moduleSymbol) {
-        return []
-    }
-
-    const exportSymbols = checker.getExportsOfModule(moduleSymbol);
-    const result: any[] = []
+    const exportSymbols = checker.getExportsOfModule(symbol);
+    let exportDefaultSymbol:ts.Symbol | undefined = undefined
 
     for (let index = 0; index < exportSymbols.length; index++) {
         const sym: ts.Symbol = exportSymbols[index];
 
-        const name = sym.getName();
         // 排除命名导出
-        if (blacklistNames.includes(name) || name !== "default") {
+        if (sym.getName() !== "default") {
           continue;
         }
 
@@ -78,38 +53,55 @@ export default function(filePath: string, args: {workDir: string; tsconfigFileNa
         if (!sym.valueDeclaration) {
           continue;
         }
-
-        const componentInfo = parser.getComponentInfo(sym, sourceFile);
-       
-        if (componentInfo === null) {
-          continue;
-        }
-
-        result.push(componentInfo)
+        exportDefaultSymbol = sym
+        break;
     }
 
-    const coms = result.reduce((res: any[], info: any) => {
-        if (!info || !info.props || _.isEmpty(info.props)) return res;
+    return exportDefaultSymbol
+}
 
-        const props = Object.keys(info.props).reduce((acc: any[], name) => {
-          // 忽略 aria 开头的属性
-          if (name.startsWith('aria-')) {
-            return acc;
-          }
-          try {
-            const item: any = transformItem(name, info.props[name]);
-            acc.push(item);
-          } catch (e) {
-            console.log(e)
-          }
-          return acc;
-        }, []);
+function getComponentInfo(filePath: string, args: {workDir: string; tsconfigFileName?: string }) {
+  const program = createProgram(filePath, args)
+    
+  const sourceFile = program.getSourceFile(filePath);
 
-        res.push({
-          props
-        });
-        return res;
-      }, []);
+  if (!sourceFile) {
+      return null
+  }
+  const checker = program.getTypeChecker();
+  let exportDefaultSymbol = getExportDefaultSymbol(checker, sourceFile)
 
-      return coms
+  if (!exportDefaultSymbol) {
+    return null
+  }
+  const parser = new Parser(program, {})
+
+  return parser.getComponentInfo(exportDefaultSymbol, sourceFile);
+}
+
+export default function(filePath: string, args: {workDir: string; tsconfigFileName?: string }): { props: Prop[] }[] {
+    if (!filePath) {
+        return []
+    }
+
+    const componentInfo = getComponentInfo(filePath, args);
+    if (!componentInfo || !componentInfo.props || _.isEmpty(componentInfo.props)) {
+      return []
+    }
+
+    const propsName = Object.keys(componentInfo.props);
+    const props: Prop[] = []
+
+    propsName.forEach(name => {
+      if (!name.startsWith('aria-')) {
+        try {
+          const item: Prop = transformProp(name, componentInfo.props[name]);
+          props.push(item);
+        } catch (e) {
+          console.log(e)
+        }
+      }
+    })
+
+    return [{props}]
 }

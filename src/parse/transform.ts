@@ -155,7 +155,7 @@ export function transformType(itemType: any) {
               ...typeItem.type,
               ..._.pick(prop.value, ['name', 'value']),
             };
-            return transformItem(key, typeItem);
+            return transformProp(key, typeItem);
           });
       }
       break;
@@ -168,7 +168,7 @@ export function transformType(itemType: any) {
     case 'shape':
       result.value = Object.keys(value).map((n) => {
         const { name: _name, ...others } = value[n];
-        return transformItem(n, {
+        return transformProp(n, {
           ...others,
           type: {
             name: _name,
@@ -247,7 +247,7 @@ function combineOneOfValues(propType: any) {
   return result;
 }
 
-export function transformItem(name: string, item: any) {
+export function transformProp(name: string, item: any) {
   const {
     description,
     flowType,

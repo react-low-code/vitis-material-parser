@@ -39,6 +39,11 @@ interface DemoProps {
 
   // You can chain any of the above with `isRequired` to make sure a warning
   // is shown if the prop isn't provided.
+
+  /**
+   * 大小
+   */
+  size: 'small' | 'large'
 }
 
 const Demo = (props: DemoProps) => {
