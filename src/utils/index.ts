@@ -1,5 +1,6 @@
 import spawn from 'cross-spawn-promise';
 import originalSafeEval from 'safe-eval';
+import ts from 'typescript'
 import * as path from 'path';
 import fs from 'fs-extra';
 import _ from 'lodash';
@@ -56,4 +57,62 @@ export function isEvaluable(value: any): boolean {
     return Object.keys(value).every((key) => isEvaluable(value[key]));
   }
   return false;
+}
+
+/** 是否是字面量类型 */
+export function isLiteralType(value: string) {
+  value = value.trim()
+  // 是空字符串
+  if (!value) {
+    return false
+  }
+  // 是 '"hi"' 这种情况
+  if (value[0] === '"' && value.slice(-1) === '"') {
+    return true
+  }
+  // 是 123 这种情况
+  if (/^\d*(\.\d*)?$/.test(value)) {
+    return true
+  }
+
+  if (value === 'false' || value === 'true') {
+    return true
+  }
+  
+  return false
+}
+
+export function extractLiteralType(value: string) {
+  value = value.trim()
+  // 是 "123" 这种情况
+  if (/^\d*(\.\d*)?$/.test(value)) {
+    return parseFloat(value)
+  } else if (value === 'false') {
+    return false
+  } else if (value === 'true') {
+    return true
+  }
+  // 是 '"hi"' 这种情况
+  else {
+    return value.slice(1, value.length - 1)
+  }
+}
+
+export function isAtomicType(value: string) {
+  value = value.trim()
+  if (isLiteralType(value)) return true
+  else if (['number','string','bool','any','symbol','null','void'].includes(value)) {
+    return true
+  } else {
+    return false
+  }
+}
+
+export function transformCode(code: any) {
+  if (typeof code !== 'string') return code
+  let outputText = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.None }}).outputText
+  if (/;\n$/.test(outputText)) {
+    return outputText.slice(0,-2)
+  }
+  else return outputText
 }

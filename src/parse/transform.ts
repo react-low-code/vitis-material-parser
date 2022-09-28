@@ -1,22 +1,24 @@
 import _ from 'lodash';
-import { safeEval, isEvaluable } from '../utils/index';
+import { safeEval, isEvaluable, isLiteralType, extractLiteralType, isAtomicType, transformCode } from '../utils/index';
 
 export function transformType(itemType: any) {
-  if (typeof itemType === 'string') return itemType;
+  if (typeof itemType === 'string') {
+    if(isLiteralType(itemType)) return extractLiteralType(itemType)
+    if(isAtomicType(itemType)) return itemType
+    itemType = {
+      name: itemType,
+
+    }
+  }
   const {
     name,
-    elements,
-    value = elements,
-    computed,
+    value,
     required,
     type,
     raw,
     params,
     returns,
   } = itemType;
-  if (computed !== undefined && value) {
-    return safeEval(value);
-  }
   const result: any = {
     type: name,
   };
@@ -177,84 +179,56 @@ export function transformType(itemType: any) {
       });
       break;
     case (name.match(/ReactNode$/) || {}).input:
+    case (name.match(/^ElementType/) || {}).input:
+    case (name.match(/^ReactInstance/) || {}).input:
       result.type = 'node';
       break;
     case (name.match(/JSX\.Element$/) || {}).input:
+    case (name.match(/^ReactElement/) || {}).input:
       result.type = 'element';
+      break;
+    case (name.match(/\|/) || {}).input:
+      if (name.split('|').every(isLiteralType)) {
+        result.type = 'oneOf'
+        result.value = name.split('|').map(extractLiteralType)
+      } else {
+        result.type = 'oneOfType';
+        result.value  = name.split('|').map((i: string) => transformType(i.trim()))
+      }
+      break;
+    case (name.match(/\[\]/) || {}).input:
+      result.type = 'array'
+      const match = /([\w]*)?\[\]/.exec(name)
+      if (match && match[1])  {
+        result.type = 'arrayOf'
+        result.value = transformType(match[1])
+      }
       break;
     default:
       result.type = 'object';
       break;
   }
+
   if (Object.keys(result).length === 1) {
     return result.type;
   }
-  if (result?.type === 'oneOfType') {
-    return combineOneOfValues(result);
-  }
+ 
   return result;
 }
 
-function combineOneOfValues(propType: any) {
-  if (propType.type !== 'oneOfType') {
-    return propType;
+function transformDefaultValue(defaultValue: any) {
+  if (!_.isNil(defaultValue) && typeof defaultValue === 'object' && isEvaluable(defaultValue)) {
+    return transformCode(defaultValue.value);
   }
-  const newValue: any[] = [];
-  let oneOfItem: any = null;
-  let firstBooleanIndex = -1;
-  propType.value.forEach((item: any) => {
-    if (item?.type === 'oneOf') {
-      if (!oneOfItem) {
-        oneOfItem = {
-          type: 'oneOf',
-          value: [],
-        };
-      }
-      if (item.value.includes(true) || item.value.includes(false)) {
-        if (firstBooleanIndex !== -1) {
-          oneOfItem.value.splice(firstBooleanIndex, 1);
-          newValue.push('bool');
-        } else {
-          firstBooleanIndex = oneOfItem.value.length;
-          oneOfItem.value = oneOfItem.value.concat(item.value);
-        }
-      } else {
-        oneOfItem.value = oneOfItem.value.concat(item.value);
-      }
-    } else {
-      newValue.push(item);
-    }
-  });
-  let result = propType;
-  const oneOfItemLength = oneOfItem?.value?.length;
-  if (oneOfItemLength) {
-    newValue.push(oneOfItem);
-  }
-  if (firstBooleanIndex !== -1 || oneOfItemLength) {
-    result = {
-      ...propType,
-      value: newValue,
-    };
-  }
-  if (result.value.length === 1 && result.value[0]?.type === 'oneOf') {
-    result = {
-      ...result,
-      type: 'oneOf',
-      value: result.value[0].value,
-    };
-  }
-  result.value = _.uniq(result.value);
-  return result;
+
+  return undefined
 }
 
 export function transformProp(name: string, item: any) {
   const {
     description,
-    flowType,
-    tsType,
-    type = tsType || flowType,
-    optional,
-    required = optional,
+    type,
+    required,
     defaultValue,
     ...others
   } = item;
@@ -276,25 +250,10 @@ export function transformProp(name: string, item: any) {
       result.description = description;
     }
   }
-  if (!_.isNil(defaultValue) && typeof defaultValue === 'object' && isEvaluable(defaultValue)) {
-    if (defaultValue === null) {
-      result.defaultValue = defaultValue;
-    } else if ('computed' in defaultValue) {
-      // parsed data from react-docgen
-      try {
-        if (isEvaluable(defaultValue.value)) {
-          result.defaultValue = safeEval(defaultValue.value);
-        } else {
-          result.defaultValue = defaultValue.value;
-        }
-      } catch (e) {
-        console.log(e);
-      }
-    } else {
-      // parsed data from react-docgen-typescript
-      result.defaultValue = defaultValue.value;
-    }
+  if (!_.isNil(defaultValue)) {
+    result.defaultValue = transformDefaultValue(defaultValue)
   }
+  
   if (result.propType === undefined) {
     delete result.propType;
   }
