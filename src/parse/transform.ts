@@ -1,10 +1,10 @@
 import _ from 'lodash';
 import { safeEval, isEvaluable, isLiteralType, extractLiteralType, isAtomicType, transformCode } from '../utils/index';
+import { PropType, SetterConfig } from '../schema/type'
 
 export function transformType(itemType: any) {
   if (typeof itemType === 'string') {
-    if(isLiteralType(itemType)) return extractLiteralType(itemType)
-    if(isAtomicType(itemType)) return itemType
+    if(isLiteralType(itemType) || isAtomicType(itemType)) return itemType
     itemType = {
       name: itemType,
 
@@ -188,13 +188,17 @@ export function transformType(itemType: any) {
       result.type = 'element';
       break;
     case (name.match(/\|/) || {}).input:
-      if (name.split('|').every(isLiteralType)) {
+      let nameArr: string[] =  name.split('|').map(i => i.trim())
+      if (nameArr.includes('undefined')) {
+        result.required = false
+      }
+      nameArr = nameArr.filter(i => i !== 'undefined')
+      if (nameArr.every(isLiteralType)) {
         result.type = 'oneOf'
-        result.value = name.split('|').map(extractLiteralType)
       } else {
         result.type = 'oneOfType';
-        result.value  = name.split('|').map((i: string) => transformType(i.trim()))
       }
+      result.value = nameArr.map((i: string) => transformType(i))
       break;
     case (name.match(/\[\]/) || {}).input:
       result.type = 'array'
@@ -208,10 +212,6 @@ export function transformType(itemType: any) {
       result.type = 'object';
       break;
   }
-
-  if (Object.keys(result).length === 1) {
-    return result.type;
-  }
  
   return result;
 }
@@ -222,6 +222,55 @@ function transformDefaultValue(defaultValue: any) {
   }
 
   return undefined
+}
+
+function genSetter(propType: PropType | string) {
+  let setter: SetterConfig | SetterConfig[] = {
+    setterName: 'StringSetter',
+  }
+  const type = typeof propType === 'string' ? propType : propType.type
+  const value = typeof propType === 'string' ? [] : (propType as any).value || []
+  switch (type) {
+    case 'string':
+    case 'any':
+      setter.setterName = 'StringSetter'
+      break;
+    case 'array':
+    case 'object':
+    case 'arrayOf':
+    case 'objectOf':
+    case 'shape':
+    case 'exact':
+      setter.setterName = 'JsonSetter'
+      break;
+    case 'bool':
+      setter.setterName = 'BoolSetter'
+      break;
+    case 'func': 
+      setter.setterName = 'FunctionSetter'
+      break;
+    case 'number': 
+      setter.setterName = 'NumberSetter'
+      break;
+    case 'node':
+    case 'element':
+      setter.setterName = 'JSXSetter'
+      break;
+    case 'oneOf':
+      setter.setterName = value.length > 3 ? "SelectSetter": "RadioGroupSetter"
+      setter.props = {
+        data: value.map(extractLiteralType)
+      }
+      break;
+    case 'oneOfType':
+      setter = _.uniqBy<SetterConfig>(value.map(genSetter),'setterName') 
+      break;
+    default:
+      setter.setterName = 'StringSetter'
+      break;
+  }
+
+  return setter
 }
 
 export function transformProp(name: string, item: any) {
@@ -235,14 +284,12 @@ export function transformProp(name: string, item: any) {
   const result: any = {
     name,
   };
-
-  if (type) {
-    result.propType = transformType({
-      ...type,
-      ..._.omit(others, ['name']),
-      required: !!required,
-    });
-  }
+  result.propType = transformType({
+    ...type,
+    ..._.omit(others, ['name']),
+    required: !!required,
+  });
+  result.setter = genSetter(result.propType)
   if (description) {
     if (description.includes('\n')) {
       result.description = description.split('\n')[0];

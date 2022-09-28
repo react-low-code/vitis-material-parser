@@ -1,8 +1,7 @@
-export type PropType = BasicType | RequiredType | ComplexType;
-export type BasicType = 'array' | 'bool' | 'func' | 'number' | 'object' | 'string' | 'node' | 'element' | 'any';
+export type PropType = BasicType | ComplexType;
 export type ComplexType = OneOf | OneOfType | ArrayOf | ObjectOf | Shape | Exact;
-export interface RequiredType {
-    type: BasicType;
+export interface BasicType {
+    type: 'array' | 'bool' | 'func' | 'number' | 'object' | 'string' | 'node' | 'element' | 'any';
     isRequired?: boolean;
 }
 export interface OneOf {
@@ -62,7 +61,7 @@ export interface Prop {
     propType: PropType;
     description?: string;
     defaultValue?: any;
-    setter: string | SetterConfig;
+    setter: SetterConfig | SetterConfig[]
     isShow?: boolean;
     [k: string]: any;
 }

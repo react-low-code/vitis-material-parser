@@ -82,7 +82,8 @@ export function isLiteralType(value: string) {
   return false
 }
 
-export function extractLiteralType(value: string) {
+export function extractLiteralType(value: string | number | boolean) {
+  if (typeof value !== 'string') return value
   value = value.trim()
   // 是 "123" 这种情况
   if (/^\d*(\.\d*)?$/.test(value)) {
