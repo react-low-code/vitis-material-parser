@@ -111,7 +111,7 @@ export function isAtomicType(value: string) {
 
 export function transformCode(code: any) {
   if (typeof code !== 'string') return code
-  let outputText = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.None }}).outputText
+  let outputText = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.None, jsx: ts.JsxEmit.React, }}).outputText
   if (/;\n$/.test(outputText)) {
     return outputText.slice(0,-2)
   }

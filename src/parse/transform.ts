@@ -4,7 +4,7 @@ import { PropType, SetterConfig } from '../schema/type'
 
 export function transformType(itemType: any) {
   if (typeof itemType === 'string') {
-    if(isLiteralType(itemType) || isAtomicType(itemType)) return itemType
+    if(isAtomicType(itemType)) return itemType
     itemType = {
       name: itemType,
 

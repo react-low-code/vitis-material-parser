@@ -98,7 +98,7 @@ export default function(filePath: string, args: {workDir: string; tsconfigFileNa
           const item: Prop = transformProp(name, componentInfo.props[name]);
           props.push(item);
         } catch (e) {
-          console.log(e)
+          console.error(e)
         }
       }
     })

@@ -60,8 +60,8 @@ export interface Prop {
     name: string;
     propType: PropType;
     description?: string;
-    defaultValue?: any;
+    defaultValue?: number | string | boolean | null
     setter: SetterConfig | SetterConfig[]
-    isShow?: boolean;
+    isHidden?: boolean;
     [k: string]: any;
 }
