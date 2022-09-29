@@ -29,7 +29,7 @@ interface DemoProps {
   // optionalEnum: 'News'|'Photos'|false,
 
   // An object that could be one of many types
-  optionalUnion: string|number|React.ReactInstance,
+  // optionalUnion: string|number|React.ReactInstance,
 
   // An array of a certain type
   // optionalArrayOf: number[],
@@ -43,7 +43,7 @@ interface DemoProps {
   /**
    * 大小
    */
-  size: 'small' | 'large'
+  size: 'small' | 'large' | number
 }
 
 const Demo = (props: DemoProps) => {
@@ -52,7 +52,9 @@ const Demo = (props: DemoProps) => {
 
 Demo.defaultProps = {
   optionalString: 'optionalString',
-  optionalFunc: (a: string) => {return a}
+  optionalFunc: (a: string) => {return a},
+  optionalNumber: (a: string) => {return a},
+  size: 'small'
 };
 
 export default Demo;

@@ -16,6 +16,8 @@ export default async function run(componentAbsolutePath: string, args: {workDir:
           docUrl:`https://unpkg.com/${name}@${version}/docs/index.html`,
           version: version,
           props: componentDocs[0] ? componentDocs[0].props: '',
+          // "base"|"layout"|"subjoin"，描述该组件位于组件面板中哪个区域
+          group: 'subjoin',
           advanced: {
             // 组件的嵌套规则
             nestingRule: {
@@ -36,8 +38,9 @@ export default async function run(componentAbsolutePath: string, args: {workDir:
               // 支持的事件列表
               events: ['onClick']
             },
-            // 该组件是否是容器，容器能拥有自己的数据源
-            isContainer: false,
+            // 容器类型，容器能有自己的数据源
+            // false | 'Page' | 'Block' | 'DataBlock'
+            containerType: false,
             // 是否是表单组件
             isFormControl: false,
             // 是否是布局组件
