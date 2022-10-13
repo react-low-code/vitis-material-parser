@@ -13,6 +13,8 @@ interface DemoProps {
   // Anything that can be rendered: numbers, strings, elements or an array
   // (or fragment) containing these types.
   optionalNode: React.ReactNode,
+  /**孩子 */
+  children: React.ReactNode,
 
   // A React element (ie. <MyComponent />).
   // optionalElement: React.ReactElement,

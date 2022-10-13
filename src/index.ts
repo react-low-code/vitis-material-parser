@@ -4,8 +4,13 @@ import fs from 'fs-extra';
 import parse from './parse/index'
 
 export default async function run(componentAbsolutePath: string, args: {workDir: string, tsconfigFileName?: string}): Promise<string> {
-    const componentDocs = parse(componentAbsolutePath, args)
+    const componentDoc = parse(componentAbsolutePath, args)[0] || {}
     const { componentConfig = {}, version = '0.0.0', description, name } = JSON.parse(fs.readFileSync( resolve(process.cwd(), 'package.json'), {encoding: 'utf-8'} ))
+    // 如果该组件能接受 children 属性就说明它是容器组件
+    const isContainer = !!(componentDoc.props||[]).find(prop => prop.name === 'children')
+    // children 不在配置面板中配置，而是从组件面板中拖入，所以这里去掉 children 属性
+    componentDoc.props = isContainer ? componentDoc.props.filter(prop => prop.name !== 'children'): componentDoc.props
+
     return JSON.stringify(
         {
           componentName: componentConfig.name || '',
@@ -15,18 +20,18 @@ export default async function run(componentAbsolutePath: string, args: {workDir:
           description,
           docUrl:`https://unpkg.com/${name}@${version}/docs/index.html`,
           version: version,
-          props: componentDocs[0] ? componentDocs[0].props: '',
+          props: componentDoc.props ? componentDoc.props: [],
           // "base"|"layout"|"subjoin"，描述该组件位于组件面板中哪个区域
           group: 'subjoin',
           advanced: {
             // 组件的嵌套规则
             nestingRule: {
               // 父级组件白名单
-              // 业务组件必须放置在布局组件中
-              parentWhitelist: ['LayoutColumn'],
+              // 非容器组件必须放置在容器组件中
+              parentWhitelist: isContainer ? ['Page']: ['Layout-*'],
               // 子组件白名单。
-              // 空数组则说明其他组件不能放置在该组件中
-              childWhitelist: []
+              // 空数组则说明其他组件不能放置在该组件中, undefined 则说明其他组件能放置在该组件中
+              childWhitelist: isContainer ? undefined: []
             },
             supports: {
               // 是否能配置样式
@@ -38,13 +43,14 @@ export default async function run(componentAbsolutePath: string, args: {workDir:
               // 支持的事件列表
               events: ['onClick']
             },
-            // 容器类型，容器能有自己的数据源
-            // false | 'Page' | 'Block' | 'DataBlock'
-            containerType: false,
-            // 是否是表单组件
-            isFormControl: false,
-            // 是否是布局组件
-            isLayout: false
+            component: {
+              // 是否是容器
+              isContainer: isContainer,
+              // 容器类型，非必填，可选值：‘Layout’、‘Data’、‘Page’
+              containerType: isContainer ? 'Layout': undefined,
+              // 是否是表单组件
+              isFormControl: false,
+             },
           },
         },
         null,
