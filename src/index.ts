@@ -8,8 +8,12 @@ export default async function run(componentAbsolutePath: string, args: {workDir:
     const { componentConfig = {}, version = '0.0.0', description, name } = JSON.parse(fs.readFileSync( resolve(process.cwd(), 'package.json'), {encoding: 'utf-8'} ))
     // 如果该组件能接受 children 属性就说明它是容器组件
     const isContainer = !!(componentDoc.props||[]).find(prop => prop.name === 'children')
-    // children 不在配置面板中配置，而是从组件面板中拖入，所以这里去掉 children 属性
+    // children 不在属性面板中配置，而是从组件面板中拖入，所以这里去掉 children 属性
     componentDoc.props = isContainer ? componentDoc.props.filter(prop => prop.name !== 'children'): componentDoc.props
+    // 该组件是否能接受样式
+    const isSupportStyle = !!(componentDoc.props||[]).find(prop => prop.name === 'style')
+    // 样式在属性面板中配置，而是在样式面板中配置，所以这里去掉 style 属性
+    componentDoc.props = isContainer ? componentDoc.props.filter(prop => prop.name !== 'style'): componentDoc.props
 
     return JSON.stringify(
         {
@@ -35,13 +39,13 @@ export default async function run(componentAbsolutePath: string, args: {workDir:
             },
             supports: {
               // 是否能配置样式
-              styles: true,
+              styles: isSupportStyle,
               // 是否能配置校验规则
               validation: false,
               // 是否能配置联动规则
               linkage: false,
-              // 支持的事件列表
-              events: ['onClick']
+              // 支持的事件列表，空数组意味着不支持任何事件
+              events: []
             },
             component: {
               // 是否是容器

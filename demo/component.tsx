@@ -15,6 +15,7 @@ interface DemoProps {
   optionalNode: React.ReactNode,
   /**孩子 */
   children: React.ReactNode,
+  style: React.CSSProperties
 
   // A React element (ie. <MyComponent />).
   // optionalElement: React.ReactElement,
